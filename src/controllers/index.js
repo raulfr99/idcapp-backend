@@ -97,6 +97,62 @@ exports.getAllSales = (req, res, next) => {
     
     })
    };
+   exports.getCons = (req, res, next) => {
+    odoo.connect(function (err){
+        if(err) {return console.log(err)}
+        console.log('Connected to Odoo server')
+        console.log(req.body.params)
+            var inParams = [];
+            inParams.push([['partner_id.id', '=', '182983'],['product_id.id', '=', '4']]);
+            
+            // inParams.push([['partner_id.id', '=', req.body.params.userID],['product_id.id', '=', '4']]);
+            inParams.push(['name','confirmation_date','partner_id','user_id','amount_total',
+            'invoice_status', 'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line', 
+            'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id', 'origin','product_id']);
+    
+            var params = [];
+            params.push(inParams);
+            odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
+                if (err2) { return console.log(err2); }
+                console.log(value)
+                let filter = value.filter(val => val.product_id[0] == 4 && val.x_studio_field_DGArF && val.origin)
+                inParams = []
+                params = []
+                inParams.push([['name', '=', filter[0].origin]]);
+                let NIP = filter[0].x_studio_field_DGArF
+                // inParams.push(['id', 'name','display_name','res_name']);
+                params.push(inParams);
+                
+                odoo.execute_kw('sale.subscription', 'search_read', params, function(err,value){
+                    if (err) { return console.log(err); }
+                    let yourDate = new Date()
+                    let formatedDate = yourDate.toISOString().split('T')[0]
+                    if(value[0].recurring_next_date >= formatedDate){
+                        res.status(200).json({
+                            status: "success",
+                            length: value?.length,
+                            data: value,
+                            subscription: true,
+                            NIP: NIP
+                        });
+                    }else{
+                        res.status(200).json({
+                            status: "success",
+                            length: value?.length,
+                            // data: value,
+                            message: "La suscripcion ha vencido!",
+                            subscription: false
+                        });
+                    }
+                    
+                    console.log(value)
+                       
+                })
+                
+            });
+    
+    })
+   };
    exports.getInvoices = (req, res, next) => {
     odoo.connect(function (err){
         if(err) {return console.log(err)}
