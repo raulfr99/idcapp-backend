@@ -109,7 +109,7 @@ exports.getAllSales = (req, res, next) => {
         var testArray = []
 
             var inParams = [];
-            inParams.push([['partner_id.id', '=', '186804'],['product_id.id', '=', '4']]);
+            inParams.push([['partner_id.id', '=', req.body.params.userID]]);
             
             // inParams.push([['partner_id.id', '=', req.body.params.userID],['product_id.id', '=', '4']]);
             inParams.push(['name','confirmation_date','partner_id','user_id','amount_total',
@@ -119,63 +119,92 @@ exports.getAllSales = (req, res, next) => {
             var params = [];
             params.push(inParams);
             odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
+                console.log('Ventas: ',value)
+                let filter = value.filter((value, index, self) =>
+                    index === self.findIndex((t) => (
+                        t.x_studio_field_DGArF === value.x_studio_field_DGArF && t.x_studio_field_DGArF != false
+                    ))
+                )
+               
+                
+                console.log('x: ',filter)
                 if (err2) { return console.log(err2); }
-                // console.log(value)
-                let filter = value.filter(val => val.product_id[0] == 4 && val.x_studio_field_DGArF && val.origin)
-                 function callBack () {
-                    var itemsProcessed = 0;
-                    const result = finalArray.map(data =>{
-                        if(filter.some(sort => sort.origin === data.name)){
-                            data.NIP = filter.find(
-                                sort => sort.origin === data.name
-                            ).x_studio_field_DGArF;
+                var itemsProcessed = 0;
+                filter.forEach(async (item,index) => {
+                    await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.x_studio_field_DGArF)
+                    .then(res => {
+                        filter[index].nipData = res.data
+                        filter[index].avaible = true
+                        filter[index].NIP = filter[index].x_studio_field_DGArF
+                        
+                    })
+                    .catch(err => {
+                        filter[index].avaible = false
+                        console.log('Error: ', err.message);
+                    });
+                    itemsProcessed++;
+                    if(itemsProcessed === filter.length) {
+                        testArray = filter
+                        nipCallback();
+                    }
+
+                })
+                // let filter = value.filter(val => val.x_studio_field_DGArF && val.origin)
+                //  function callBack () {
+                //     console.log('Ici: ', finalArray)
+                //     var itemsProcessed = 0;
+                //     const result = finalArray.map(data =>{
+                //         if(filter.some(sort => sort.origin === data.name)){
+                //             data.NIP = filter.find(
+                //                 sort => sort.origin === data.name
+                //             ).x_studio_field_DGArF;
                            
-                            return data;
-                        }
-                        else{
-                            return data;
-                        }
-                    })
-
-                    result.forEach(async (item,index) => {
-                         await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.NIP)
-                        .then(res => {
-                            result[index].nipData = res.data
-                            result[index].avaible = true
+                //             return data;
+                //         }
+                //         else{
+                //             return data;
+                //         }
+                //     })
+                //     console.log('Finales: ',result)
+                //     result.forEach(async (item,index) => {
+                //          await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.NIP)
+                //         .then(res => {
+                //             result[index].nipData = res.data
+                //             result[index].avaible = true
 
                             
-                        })
-                        .catch(err => {
-                            result[index].avaible = false
-                            console.log('Error: ', err.message);
-                        });
-                        itemsProcessed++;
-                        if(itemsProcessed === result.length) {
-                            testArray = result
-                            nipCallback();
-                        }
+                //         })
+                //         .catch(err => {
+                //             result[index].avaible = false
+                //             console.log('Error: ', err.message);
+                //         });
+                //         itemsProcessed++;
+                //         if(itemsProcessed === result.length) {
+                //             testArray = result
+                //             nipCallback();
+                //         }
 
-                    })
+                //     })
                     
-                    // console.log('Construido', testo)
-                    // if(result.length > 0){
-                    //     res.status(200).json({
-                    //         status: "success",
-                    //         length: value?.length,
-                    //         data: result,
-                    //         subscription: true,
-                    //     });
-                    // }else{
-                    //     res.status(200).json({
-                    //         status: "success",
-                    //         length: value?.length,
-                    //         data: result,
-                    //         subscription: false,
+                //     // console.log('Construido', testo)
+                //     // if(result.length > 0){
+                //     //     res.status(200).json({
+                //     //         status: "success",
+                //     //         length: value?.length,
+                //     //         data: result,
+                //     //         subscription: true,
+                //     //     });
+                //     // }else{
+                //     //     res.status(200).json({
+                //     //         status: "success",
+                //     //         length: value?.length,
+                //     //         data: result,
+                //     //         subscription: false,
                             
-                    //     });
-                    // }
-                    // console.log('Final: ', finalArray)
-                }
+                //     //     });
+                //     // }
+                //     // console.log('Final: ', finalArray)
+                // }
                  function nipCallback() {
                     console.log('test: ',testArray)
                     // if(result.length > 0){
@@ -196,28 +225,28 @@ exports.getAllSales = (req, res, next) => {
                         // }
                 }
 
-                var itemsProcessed = 0;
-                filter.forEach(item => {
-                inParams = []
-                params = []
-                inParams.push([['name', '=', item.origin]]);
-                inParams.push(['date_start', 'recurring_next_date','name']);
-                params.push(inParams);
-                odoo.execute_kw('sale.subscription', 'search_read', params, function(err,value){
-                if (err) { return console.log(err); }
-                    let yourDate = new Date()
-                    let formatedDate = yourDate.toISOString().split('T')[0]
-                if(new Date(value[0].recurring_next_date) >= new Date(formatedDate)){
-                    finalArray.push(value[0])
-                }else{
+                // var itemsProcessed = 0;
+                // filter.forEach(item => {
+                //     inParams = []
+                //     params = []
+                //     inParams.push([['name', '=', item.origin]]);
+                //     inParams.push(['date_start', 'recurring_next_date','name']);
+                //     params.push(inParams);
+                //     odoo.execute_kw('sale.subscription', 'search_read', params, function(err,value){
+                //     if (err) { return console.log(err); }
+                //         let yourDate = new Date()
+                //         let formatedDate = yourDate.toISOString().split('T')[0]
+                //     if(new Date(value[0].recurring_next_date) >= new Date(formatedDate)){
+                //         finalArray.push(value[0])
+                //     }else{
 
-                }
-                itemsProcessed++;
-                if(itemsProcessed === filter.length) {
-                    callBack();
-                }
-                })
-                })
+                //     }
+                //     itemsProcessed++;
+                //     if(itemsProcessed === filter.length) {
+                //         callBack();
+                //     }
+                //     })
+                // })
                 // inParams = []
                 // params = []
                 // inParams.push([['name', '=', filter[0].origin]]);
@@ -265,23 +294,37 @@ exports.getAllSales = (req, res, next) => {
         var params = [];
         params.push(inParams);
         odoo.execute_kw('account.invoice', 'search_read', params, function (err, value) {
-            let testID = value[0].id
+            console.log(value)
+            // let testID = value[0].id
+            var finalArray = []
             if (err) { return console.log(err); }
-            inParams = []
-            params = []
-            inParams.push([['res_id', '=', testID ],['mimetype','=', ['application/pdf','text/plain','application/xml']],['res_model','=','account.invoice']]);
-            inParams.push(['id', 'name','display_name','res_name']);
-            params.push(inParams);
-
-            odoo.execute_kw('ir.attachment', 'search_read', params, function(err,value){
-                if (err) { return console.log(err); }
-                console.log(value)
-                    res.status(200).json({
-                        status: "success",
-                        length: value?.length,
-                        data: value,
-                    });
+            var itemsProcessed = 0
+            function callBack() {
+                console.log('ESte es el final: ',finalArray)
+                res.status(200).json({
+                    status: "success",
+                    length: value?.length,
+                    data: finalArray,
+                });
+            }
+            let evaluateInv = value
+            evaluateInv.forEach((item,index) =>{
+                inParams = []
+                params = []
+                inParams.push([['res_id', '=', item.id ],['mimetype','=', ['application/pdf','text/plain','application/xml']],['res_model','=','account.invoice']]);
+                inParams.push(['id', 'name','display_name','res_name', 'mimetype']);
+                params.push(inParams);
+    
+                odoo.execute_kw('ir.attachment', 'search_read', params, function(err,value){
+                    if (err) { return console.log(err); }
+                    finalArray.push(...value)
+                    itemsProcessed++;
+                    if(itemsProcessed === evaluateInv.length) {
+                        callBack();
+                    }
+                })
             })
+           
         });
     })
    };
