@@ -120,165 +120,63 @@ exports.getAllSales = (req, res, next) => {
             params.push(inParams);
             odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
                 console.log('Ventas: ',value)
-                let filter = value.filter((value, index, self) =>
-                    index === self.findIndex((t) => (
-                        t.x_studio_field_DGArF === value.x_studio_field_DGArF && t.x_studio_field_DGArF != false
-                    ))
-                )
-               
-                
-                console.log('x: ',filter)
-                if (err2) { return console.log(err2); }
-                var itemsProcessed = 0;
-                filter.forEach(async (item,index) => {
-                    await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.x_studio_field_DGArF)
-                    .then(res => {
-                        filter[index].nipData = res.data
-                        filter[index].avaible = true
-                        filter[index].NIP = filter[index].x_studio_field_DGArF
-                        
-                    })
-                    .catch(err => {
-                        filter[index].avaible = false
-                        console.log('Error: ', err.message);
+                if(value.length <= 0){
+                    res.status(200).json({
+                        status: "success",
+                        length: value?.length,
+                        data: [],
+                        // subscription: true,
                     });
-                    itemsProcessed++;
-                    if(itemsProcessed === filter.length) {
-                        testArray = filter
-                        nipCallback();
-                    }
-
-                })
-                // let filter = value.filter(val => val.x_studio_field_DGArF && val.origin)
-                //  function callBack () {
-                //     console.log('Ici: ', finalArray)
-                //     var itemsProcessed = 0;
-                //     const result = finalArray.map(data =>{
-                //         if(filter.some(sort => sort.origin === data.name)){
-                //             data.NIP = filter.find(
-                //                 sort => sort.origin === data.name
-                //             ).x_studio_field_DGArF;
-                           
-                //             return data;
-                //         }
-                //         else{
-                //             return data;
-                //         }
-                //     })
-                //     console.log('Finales: ',result)
-                //     result.forEach(async (item,index) => {
-                //          await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.NIP)
-                //         .then(res => {
-                //             result[index].nipData = res.data
-                //             result[index].avaible = true
-
-                            
-                //         })
-                //         .catch(err => {
-                //             result[index].avaible = false
-                //             console.log('Error: ', err.message);
-                //         });
-                //         itemsProcessed++;
-                //         if(itemsProcessed === result.length) {
-                //             testArray = result
-                //             nipCallback();
-                //         }
-
-                //     })
-                    
-                //     // console.log('Construido', testo)
-                //     // if(result.length > 0){
-                //     //     res.status(200).json({
-                //     //         status: "success",
-                //     //         length: value?.length,
-                //     //         data: result,
-                //     //         subscription: true,
-                //     //     });
-                //     // }else{
-                //     //     res.status(200).json({
-                //     //         status: "success",
-                //     //         length: value?.length,
-                //     //         data: result,
-                //     //         subscription: false,
-                            
-                //     //     });
-                //     // }
-                //     // console.log('Final: ', finalArray)
-                // }
-                 function nipCallback() {
-                    console.log('test: ',testArray)
-                    // if(result.length > 0){
-                        res.status(200).json({
-                            status: "success",
-                            length: value?.length,
-                            data: testArray,
-                            // subscription: true,
-                        });
-                        // }else{
-                            // res.status(200).json({
-                            //     status: "success",
-                            //     length: value?.length,
-                            //     data: result,
-                            //     subscription: false,
-                                
-                            // });
-                        // }
-                }
-
-                // var itemsProcessed = 0;
-                // filter.forEach(item => {
-                //     inParams = []
-                //     params = []
-                //     inParams.push([['name', '=', item.origin]]);
-                //     inParams.push(['date_start', 'recurring_next_date','name']);
-                //     params.push(inParams);
-                //     odoo.execute_kw('sale.subscription', 'search_read', params, function(err,value){
-                //     if (err) { return console.log(err); }
-                //         let yourDate = new Date()
-                //         let formatedDate = yourDate.toISOString().split('T')[0]
-                //     if(new Date(value[0].recurring_next_date) >= new Date(formatedDate)){
-                //         finalArray.push(value[0])
-                //     }else{
-
-                //     }
-                //     itemsProcessed++;
-                //     if(itemsProcessed === filter.length) {
-                //         callBack();
-                //     }
-                //     })
-                // })
-                // inParams = []
-                // params = []
-                // inParams.push([['name', '=', filter[0].origin]]);
-                // let NIP = filter[0].x_studio_field_DGArF
-                // // inParams.push(['id', 'name','display_name','res_name']);
-                // params.push(inParams);
+                }else{
+                    let filter = value.filter((value, index, self) =>
+                        index === self.findIndex((t) => (
+                            t.x_studio_field_DGArF === value.x_studio_field_DGArF && t.x_studio_field_DGArF != false
+                        ))
+                    )
                 
-                // odoo.execute_kw('sale.subscription', 'search_read', params, function(err,value){
-                //     if (err) { return console.log(err); }
-                //     let yourDate = new Date()
-                //     let formatedDate = yourDate.toISOString().split('T')[0]
-                //     if(new Date(value[0].recurring_next_date) >= new Date(formatedDate)){
-                //         res.status(200).json({
-                //             status: "success",
-                //             length: value?.length,
-                //             data: value,
-                //             subscription: true,
-                //             NIP: NIP
-                //         });
-                //     }else{
-                //         res.status(200).json({
-                //             status: "success",
-                //             length: value?.length,
-                //             // data: value,
-                //             message: "La suscripcion ha vencido!",
-                //             subscription: false
-                //         });
-                //     }
                     
-                //     console.log(value)
-                       
-                // })
+                    console.log('x: ',filter)
+                    if (err2) { return console.log(err2); }
+                    var itemsProcessed = 0;
+                    filter.forEach(async (item,index) => {
+                        await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.x_studio_field_DGArF)
+                        .then(res => {
+                            filter[index].nipData = res.data
+                            filter[index].avaible = true
+                            filter[index].NIP = filter[index].x_studio_field_DGArF
+                            
+                        })
+                        .catch(err => {
+                            filter[index].avaible = false
+                            console.log('Error: ', err.message);
+                        });
+                        itemsProcessed++;
+                        if(itemsProcessed === filter.length) {
+                            testArray = filter
+                            nipCallback();
+                        }
+
+                    })
+                    function nipCallback() {
+                        console.log('test: ',testArray)
+                        // if(result.length > 0){
+                            res.status(200).json({
+                                status: "success",
+                                length: value?.length,
+                                data: testArray,
+                                // subscription: true,
+                            });
+                            // }else{
+                                // res.status(200).json({
+                                //     status: "success",
+                                //     length: value?.length,
+                                //     data: result,
+                                //     subscription: false,
+                                    
+                                // });
+                            // }
+                    }
+            }
                 
             });
     
