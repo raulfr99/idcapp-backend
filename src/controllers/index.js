@@ -144,7 +144,7 @@ exports.getAllSales = (req, res, next) => {
                             filter[index].nipData = res.data
                             filter[index].avaible = true
                             filter[index].NIP = filter[index].x_studio_field_DGArF
-                            
+                            filter.subscription = true
                         })
                         .catch(err => {
                             filter[index].avaible = false
@@ -159,12 +159,16 @@ exports.getAllSales = (req, res, next) => {
                     })
                     function nipCallback() {
                         console.log('test: ',testArray)
+                        let subAvaible = false
+                        if(testArray.subscription){
+                            subAvaible = true
+                        }
                         // if(result.length > 0){
                             res.status(200).json({
                                 status: "success",
                                 length: value?.length,
                                 data: testArray,
-                                // subscription: true,
+                                subscription: subAvaible,
                             });
                             // }else{
                                 // res.status(200).json({
