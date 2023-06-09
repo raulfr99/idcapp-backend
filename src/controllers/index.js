@@ -25,11 +25,21 @@ exports.getAllTodos = (req, res, next) => {
                 if (err2) { return console.log(err2); }
                 let value = value2.filter(val => val.parent_id === false)
                 console.log(value)
-                res.status(200).json({
-                    status: "success",
-                    length: value?.length,
-                    data: value[0],
-                  });
+                if(value.length === 0){
+                    res.status(200).json({
+                        status: "success",
+                        length: value?.length,
+                        // data: value[0],
+                        empty : true
+                        });
+                }else{
+                    res.status(200).json({
+                        status: "success",
+                        length: value?.length,
+                        data: value[0],
+                      });
+                }
+                
             });
     
     })
