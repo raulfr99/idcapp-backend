@@ -5,7 +5,7 @@ require('dotenv').config();
 const axios = require('axios');
 
 const odoo = new Odoo({
-    url: 'http://dev-idcerp.mx/xmlrpc/2',
+    url: 'https://idcerp.mx/xmlrpc/2',
     // port: 8069, 
     db: process.env.DB_NAME,
     username: 'hostmaster@idconline.mx',
