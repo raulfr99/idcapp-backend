@@ -3,6 +3,10 @@ const Odoo = require('odoo-xmlrpc')
 const https = require('https');
 require('dotenv').config();
 const axios = require('axios');
+const path = require('path');
+const rootCas = require('ssl-root-cas').create();
+rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
+const httpsAgent = new https.Agent({ca: rootCas});
 
 const odoo = new Odoo({
     url: 'https://idcerp.mx/xmlrpc/2',
@@ -12,7 +16,8 @@ const odoo = new Odoo({
     password: 'D3saRro1Lo'
 })
 exports.getAllTodos = (req, res, next) => {
-    console.log('Testo: ', req.body)
+    // console.log('Testo: ', req.headers)
+    // console.log('Testo: ', req.socket)
     odoo.connect(function (err){
         if(err) {return console.log(err)}
         console.log('Connected to Odoo server')
@@ -240,3 +245,23 @@ exports.getAllSales = (req, res, next) => {
         });
     })
    };
+
+   exports.logIn = (req, res, next) => {
+    console.log(req.body.params)
+    const logData = new FormData()
+    logData.append('login', req.body.params.user)
+    logData.append('password', req.body.params.pass)
+    logData.append('private_key', '{2A629162-9A1B-11E1-A5B0-5DF26188709B}')
+    axios.post('https://pagos.idconline.mx/api/ws/loginCorreo/', logData,{ httpsAgent })
+    .then(function (response) {
+        console.log(response.data);
+        res.status(200).json({
+            status: "success",
+            length: response.data.length,
+            data: response.data,
+          });
+    })
+    .catch(function (error) {
+        console.log(error);
+    })
+   }

@@ -26,4 +26,5 @@ router.get('/userdata', function(req, res) {
  router.route("/getOrderLines").post(controllers.getOrderLines);
  router.route("/getInvoices").post(controllers.getInvoices);
  router.route("/getCons").post(controllers.getCons);
+ router.route("/logIn").post(controllers.logIn);
 module.exports = router;
