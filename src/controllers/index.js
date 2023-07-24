@@ -256,8 +256,6 @@ exports.getAllSales = (req, res, next) => {
     .then(function (response) {
         console.log(response.data);
         res.status(200).json({
-            status: "success",
-            length: response.data.length,
             data: response.data,
           });
     })
