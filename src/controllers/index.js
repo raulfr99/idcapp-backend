@@ -7,7 +7,7 @@ const path = require('path');
 const rootCas = require('ssl-root-cas').create();
 rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
 const httpsAgent = new https.Agent({ca: rootCas});
-
+const FormData = require('form-data')
 const odoo = new Odoo({
     url: 'https://idcerp.mx/xmlrpc/2',
     // port: 8069, 
