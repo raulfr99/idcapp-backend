@@ -257,9 +257,40 @@ exports.getAllSales = (req, res, next) => {
     axios.post('https://pagos.idconline.mx/api/ws/loginCorreo/', logData,{ httpsAgent })
     .then(function (response) {
         console.log(response.data);
-        res.status(200).json({
-            data: response.data,
-          });
+        odoo.connect(function (err){
+            if(err) {return console.log(err)}
+            console.log('Connected to Odoo server')
+                var inParams = [];
+                inParams.push([['email', '=', req.body.params.user]]);
+                inParams.push(['email','phone', 'adress3', 'date', 'contact_address', 'is_company', 'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']);
+                var params = [];
+                params.push(inParams);
+                odoo.execute_kw('res.partner', 'search_read', params, function (err2, value2) {
+                    if (err2) { return console.log(err2); }
+                    let value = value2.filter(val => val.parent_id === false)
+                    console.log(value)
+                    if(value.length === 0){
+                        res.status(200).json({
+                            status: "success",
+                            length: value?.length,
+                            data: {
+                                odooData: value[0],
+                                logInData: response.data
+                            },
+                            empty : true
+                            });
+                    }else{
+                        res.status(200).json({
+                            data: {
+                                odooData: value[0],
+                                logInData: response.data
+                            },
+                          });
+                    }
+                    
+                });
+        
+        })
     })
     .catch(function (error) {
         console.log(error);
