@@ -4,7 +4,11 @@ const https = require('https');
 require('dotenv').config();
 const axios = require('axios');
 const path = require('path');
-
+const rootCas = require('ssl-root-cas').create();
+rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
+const httpsAgent = new https.Agent({ca: rootCas});
+const FormData = require('form-data')
+rootCas.inject()
 const odoo = new Odoo({
     url: 'https://idcerp.mx/xmlrpc/2',
     // port: 8069, 
@@ -244,10 +248,7 @@ exports.getAllSales = (req, res, next) => {
    };
 
    exports.logIn = (req, res, next) => {
-    const rootCas = require('ssl-root-cas').create();
-    rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
-    const httpsAgent = new https.Agent({ca: rootCas});
-    const FormData = require('form-data')
+   
     console.log(req.body.params)
     const logData = new FormData()
     logData.append('login', req.body.params.user)
