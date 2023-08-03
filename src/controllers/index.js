@@ -212,8 +212,14 @@ exports.getAllSales = (req, res, next) => {
         var params = [];
         params.push(inParams);
         odoo.execute_kw('account.invoice', 'search_read', params, function (err, value) {
-            console.log(value)
-            // let testID = value[0].id
+            console.log('test: ',value.length)
+            if(value.length == 0){
+                res.status(200).json({
+                    status: "success",
+                    length: value?.length,
+                    data: [],
+                });
+            }else{
             var finalArray = []
             if (err) { return console.log(err); }
             var itemsProcessed = 0
@@ -242,6 +248,7 @@ exports.getAllSales = (req, res, next) => {
                     }
                 })
             })
+        }
            
         });
     })
