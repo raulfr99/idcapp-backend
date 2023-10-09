@@ -12,7 +12,7 @@ const http = require('http');
 const fs = require('fs');
 const { resolve } = require('path');
 const axios = require('axios');
-
+const AppError = require('./utils/appError')
 
 require('dotenv').config();
 
@@ -32,19 +32,44 @@ app.all("*", (req, res, next) => {
     next(new AppError(`The URL ${req.originalUrl} does not exists`, 404));
    });
 //Nuestro primer WS Get
-app.get('/', (req, res) => {    
-    res.json(
-        {
-            "Title": "Hola mundo"
-        }
-    );
-})
+// app.get('/', (req, res) => {    
+//     res.json(
+//         {
+//             "Title": "Hola mundo"
+//         }
+//     );
+// })
  
 //Iniciando el servidor
 app.listen(app.get('port'),()=>{
     console.log(`Server listening on port ${app.get('port')}`);
 });
+// const odoo = new Odoo({
+//   url: 'https://idcerp.mx/xmlrpc/2',
+//   // port: 8069, 
+//   db: process.env.DB_NAME,
+//   username: 'hostmaster@idconline.mx',
+//   password: 'D3saRro1Lo'
+// })
+// odoo.connect(function (err){
+//   if(err) {return console.log(err)}
+//   console.log('Connected to Odoo server')
+//       var inParams = [];
+//       inParams.push([['id', '=', [ 53192, 53229 ]
+//     ]]);
+//       var params = [];
+//       params.push(inParams);
+//       odoo.execute_kw('account.invoice', 'search_read', params, function (err2, value) {
+//           if (err2) { return console.log(err2); }
+//           console.log(value)
+//       //     res.status(200).json({
+//       //         status: "success",
+//       //         length: value?.length,
+//       //         data: value[0],
+//       //       });
+//       });
 
+// })
 async function downloadFile (url, targetFile) {  
     return await new Promise((resolve, reject) => {
       http.get(url, response => {

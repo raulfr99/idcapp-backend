@@ -17,8 +17,6 @@ const odoo = new Odoo({
     password: 'D3saRro1Lo'
 })
 exports.getAllTodos = (req, res, next) => {
-    // console.log('Testo: ', req.headers)
-    // console.log('Testo: ', req.socket)
     odoo.connect(function (err){
         if(err) {return console.log(err)}
         console.log('Connected to Odoo server')
@@ -55,24 +53,47 @@ exports.getAllSales = (req, res, next) => {
     odoo.connect(function (err){
         if(err) {return console.log(err)}
         console.log('Connected to Odoo server')
-            var inParams = [];
-            inParams.push([['partner_id.id', '=', req.body.params.userID]]);
-            inParams.push(['name','confirmation_date','partner_id','user_id','amount_total',
-            'invoice_status', 'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line', 
-            'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id', 'origin']);
-    
+        var inParams = [];
+        inParams.push([['partner_id.id', '=', req.body.params.userID], ['state','=', 'done']]);
+        inParams.push(['name','confirmation_date','partner_id','user_id','amount_total',
+        'invoice_status', 'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line', 
+        'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id', 'origin', 'state', 'invoice_state', 'invoice_count', 'invoice_ids']);
+            var finalArray = []
+            var list = []
             var params = [];
             params.push(inParams);
             odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
                 if (err2) { return console.log(err2); }
-                console.log(value)
+                finalArray = value
+                finalArray = finalArray.filter(x => x.invoice_count != 0)
+                var itemsProcessed = 0;
+                    for(let item of finalArray){
+                            inParams = [];
+                            params = []
+                            inParams.push([['id', '=', item.invoice_ids]]);
+                            params.push(inParams);
+                            odoo.execute_kw('account.invoice', 'search_read', params, function (err2, value) {
+                                if (err2) { return console.log(err2); }
+                                    if(value[0].state !== 'paid' && value[0].state !== 'open' ){
+                                        item.isValid = false
+                                    }else{
+                                        item.isValid = true
+                                    }
+                                    itemsProcessed++;
+                                    if(itemsProcessed === finalArray.length) {
+                                        callBack();
+                                    }
+                            })
+                    }
+            });
+            function callBack() {
+                finalArray = finalArray.filter(x => x.isValid !== false)
                 res.status(200).json({
                     status: "success",
-                    length: value?.length,
-                    data: value,
+                    length: finalArray?.length,
+                    data: finalArray,
                   });
-            });
-    
+            }
     })
    };
    exports.getSub = (req, res, next) => {
@@ -149,30 +170,37 @@ exports.getAllSales = (req, res, next) => {
                             t.x_studio_field_DGArF === value.x_studio_field_DGArF && t.x_studio_field_DGArF != false
                         ))
                     )
-                
-                    
-                    console.log('x: ',filter)
-                    if (err2) { return console.log(err2); }
-                    var itemsProcessed = 0;
-                    filter.forEach(async (item,index) => {
-                        await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.x_studio_field_DGArF)
-                        .then(res => {
-                            filter[index].nipData = res.data
-                            filter[index].avaible = true
-                            filter[index].NIP = filter[index].x_studio_field_DGArF
-                            filter.subscription = true
-                        })
-                        .catch(err => {
-                            filter[index].avaible = false
-                            console.log('Error: ', err.message);
-                        });
-                        itemsProcessed++;
-                        if(itemsProcessed === filter.length) {
-                            testArray = filter
-                            nipCallback();
-                        }
+                    if(filter.length != 0){
+                        if (err2) { return console.log(err2); }
+                        var itemsProcessed = 0;
+                        filter.forEach(async (item,index) => {
+                            await axios.get('http://serviciowebidc.idconline.mx/CONSULTORES/API/CLIENTES/'+item.x_studio_field_DGArF)
+                            .then(res => {
+                                filter[index].nipData = res.data
+                                filter[index].avaible = true
+                                filter[index].NIP = filter[index].x_studio_field_DGArF
+                                filter.subscription = true
+                            })
+                            .catch(err => {
+                                filter[index].avaible = false
+                                console.log('Error: ', err.message);
+                            });
+                            itemsProcessed++;
+                            if(itemsProcessed === filter.length) {
+                                testArray = filter
+                                nipCallback();
+                            }
 
-                    })
+                        })
+                    }else{                  
+                        res.status(200).json({
+                            status: "success",
+                            length: value?.length,
+                            data: [],
+                            // subscription: true,
+                        });
+                    }
+                    
                     function nipCallback() {
                         console.log('test: ',testArray)
                         let subAvaible = false
