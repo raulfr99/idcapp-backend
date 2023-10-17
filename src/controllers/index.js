@@ -315,7 +315,7 @@ exports.getAllSales = (req, res, next) => {
                             status: "success",
                             length: value?.length,
                             data: {
-                                odooData: value,
+                                odooData: value[0],
                                 logInData: response.data
                             },
                             empty : true
@@ -323,7 +323,7 @@ exports.getAllSales = (req, res, next) => {
                     }else{
                         res.status(200).json({
                             data: {
-                                odooData: value,
+                                odooData: value[0],
                                 logInData: response.data
                             },
                           });
