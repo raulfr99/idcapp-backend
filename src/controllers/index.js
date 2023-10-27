@@ -73,27 +73,31 @@ exports.getAllSales = (req, res, next) => {
                 params.push(inParams);
                 odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
                     if (err2) { return console.log(err2); }
-                    finalArray = value
-                    finalArray = finalArray.filter(x => x.invoice_count != 0)
-                    var itemsProcessed = 0;
-                        for(let item of finalArray){
-                                inParams = [];
-                                params = []
-                                inParams.push([['id', '=', item.invoice_ids]]);
-                                params.push(inParams);
-                                odoo.execute_kw('account.invoice', 'search_read', params, function (err2, value) {
-                                    if (err2) { return console.log(err2); }
-                                        if(value[0].state !== 'paid' && value[0].state !== 'open' ){
-                                            item.isValid = false
-                                        }else{
-                                            item.isValid = true
-                                        }
-                                        itemsProcessed++;
-                                        if(itemsProcessed === finalArray.length) {
-                                            callBack();
-                                        }
-                                })
-                        }
+                    if(value.length == 0){
+                        callBack()
+                    }else{
+                        finalArray = value
+                        finalArray = finalArray.filter(x => x.invoice_count != 0)
+                        var itemsProcessed = 0;
+                            for(let item of finalArray){
+                                    inParams = [];
+                                    params = []
+                                    inParams.push([['id', '=', item.invoice_ids]]);
+                                    params.push(inParams);
+                                    odoo.execute_kw('account.invoice', 'search_read', params, function (err2, value) {
+                                        if (err2) { return console.log(err2); }
+                                            if(value[0].state !== 'paid' && value[0].state !== 'open' ){
+                                                item.isValid = false
+                                            }else{
+                                                item.isValid = true
+                                            }
+                                            itemsProcessed++;
+                                            if(itemsProcessed === finalArray.length) {
+                                                callBack();
+                                            }
+                                    })
+                            }
+                    }
                 });
                 function callBack() {
                     finalArray = finalArray.filter(x => x.isValid !== false)
