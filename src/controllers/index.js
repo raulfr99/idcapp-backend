@@ -8,6 +8,8 @@ const rootCas = require('ssl-root-cas').create();
 rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
 const httpsAgent = new https.Agent({ca: rootCas});
 const FormData = require('form-data')
+const schedule = require('node-schedule');
+const fs = require('fs').promises
 rootCas.inject()
 const odoo = new Odoo({
     url: 'https://idcerp.mx/xmlrpc/2',
@@ -358,4 +360,74 @@ exports.getAllSales = (req, res, next) => {
             })
             })
             return test
+   }
+   const trabajosProgramadosPath = 'programmedJobs.json'
+   exports.schedule = async (req,res) => {
+    console.log(req.body)
+    const { fecha, hora, bigUrl, title, body, dateSent } = req.body;
+    console.log(fecha, hora, bigUrl, title, body, dateSent)
+    const fechaActual = new Date();
+    const fechaFutura = new Date(`${fecha}T${hora}`);
+    if (fechaFutura <= fechaActual) {
+        return res.status(400).json({ mensaje: 'La fecha y hora proporcionadas deben ser mayores que la fecha y hora actuales.' });
+    }
+    let trabajosProgramados = []
+    try {
+        const contenido = await fs.readFile(trabajosProgramadosPath, 'utf8');
+        trabajosProgramados = JSON.parse(contenido);
+    } catch (error) {
+        console.error('Error al leer el archivo de trabajos programados:', error.message);
+    }
+    trabajosProgramados.push({ fecha: fechaFutura });
+    try {
+      await fs.writeFile(trabajosProgramadosPath, JSON.stringify(trabajosProgramados, null, 2), 'utf8');
+    } catch (error) {
+      console.error('Error al escribir en el archivo de trabajos programados:', error.message);
+    }
+    const job = schedule.scheduleJob(fechaFutura, async function () {
+        try {
+            // const response = await axios.get(apiUrl);
+            axios
+            .post("https://app.nativenotify.com/api/notification", {
+              appId: 12290,
+              appToken: 'NUU1zD6mlYTqs9y6NYrH5T',
+              title: title, 
+              body: body, 
+              dateSent: fechaFutura, 
+              // pushData: { yourProperty: 'yourPropertyValue' },
+              ...(bigUrl && {bigUrl: bigUrl}) 
+            })
+            .then((response) => {
+                console.log('Notificacion enviada correctamente!')
+            })
+            .catch((error) => {
+              console.error('Error al enviar el formulario:', error);
+            });
+            console.log('Respuesta de la API:');
+        } catch (error) {
+        console.error('Error al llamar a la API:', error.message);
+        } finally {
+            // const indice = trabajosProgramados.findIndex(t => t.fecha === fechaFutura && t.apiUrl === apiUrl);
+            const indice = trabajosProgramados.findIndex(t => t.fecha === fechaFutura );
+            if (indice !== -1) {
+                trabajosProgramados.splice(indice, 1);
+                await fs.writeFile(trabajosProgramadosPath, JSON.stringify(trabajosProgramados, null, 2), 'utf8');
+            }
+        }
+    });
+
+    // res.json({ mensaje: 'Llamada programada con éxito a: ', fechaFutura });
+    res.json({ mensaje: 'Llamada programada con éxito a: '});
+
+   }
+   
+   exports.getJobs = async (req,res) => {
+        let trabajosProgramados = [];
+        try {
+        const contenido = await fs.readFile(trabajosProgramadosPath, 'utf8');
+        trabajosProgramados = JSON.parse(contenido);
+        } catch (error) {
+        console.error('Error al leer el archivo de trabajos programados:', error.message);
+        }
+        res.json(trabajosProgramados);
    }

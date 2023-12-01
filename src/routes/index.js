@@ -27,4 +27,6 @@ const controllers = require("../controllers");
  router.route("/getInvoices").post(controllers.getInvoices);
  router.route("/getCons").post(controllers.getCons);
  router.route("/logIn").post(controllers.logIn);
+ router.route("/schedule").post(controllers.schedule);
+ router.route('/getJobs').get(controllers.getJobs)
 module.exports = router;
