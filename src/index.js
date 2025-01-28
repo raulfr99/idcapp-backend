@@ -1,67 +1,46 @@
-const Odoo = require('odoo-xmlrpc')
 const express = require('express');
 const app = express();
-const morgan=require('morgan');
-const errorHandler = require("./utils/errorHandler");
-const bodyParser = require('body-parser');
+const morgan = require('morgan');
 const path = require('path');
-const https = require('https');
-
-const multer  = require('multer')
-const http = require('http'); 
-const { resolve } = require('path');
-const axios = require('axios');
-const AppError = require('./utils/appError')
 const fs = require('fs').promises;
-const cors = require('cors')
+const cors = require('cors');
+const AppError = require('./utils/appError');
 
 require('dotenv').config();
 
-
-//Configuraciones
+// Configuraciones
 app.set('port', process.env.PORT || 3000);
-app.set('json spaces', 2)
- //Routes
- //Middleware
- app.use(morgan('dev'));
- app.use(cors())
- app.use(express.json());
- app.use(express.urlencoded({extended:false}));
- app.use(errorHandler);
- app.use(require('./routes/index'));
- 
+
+// Middleware
+app.use(morgan('dev'));
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// Rutas
+app.use(require('./routes/index'));
+
+// Capturar rutas inexistentes (404)
 app.all("*", (req, res, next) => {
-    next(new AppError(`The URL ${req.originalUrl} does not exists`, 404));
-   });
-app.listen(app.get('port'),()=>{
+    next(new AppError(`La URL ${req.originalUrl} no existe.`, 404));
+});
+
+app.use((err, req, res, next) => {
+    if (err instanceof AppError && err.statusCode === 404) {
+        res.status(404).sendFile(path.join(__dirname, 'views', '404.html'));
+    } else {
+        res.status(err.statusCode || 500).json({
+            status: 'error',
+            message: err.message || 'Error interno del servidor',
+        });
+    }
+});
+
+app.listen(app.get('port'), () => {
     console.log(`Server listening on port ${app.get('port')}`);
 });
-const odoo = new Odoo({
-  url: 'https://idcerp.mx/xmlrpc/2',
-  // port: 8069, 
-  db: process.env.DB_NAME,
-  username: 'hostmaster@idconline.mx',
-  password: 'D3saRro1Lo'
-})
+
 const programmedJobsPath = 'programmedJobs.json';
-// Limpiar el contenido del archivo al reiniciar el servidor
 fs.writeFile(programmedJobsPath, '[]', 'utf8')
   .then(() => console.log('Archivo reiniciado al iniciar el servidor'))
   .catch(error => console.error('Error al reiniciar el archivo:', error.message));
-// const schedule = require('node-schedule');
-// const fecha = "2023-11-22"
-// const hora = "14:58:00"
-// const fechaFutura = new Date(`${fecha}T${hora}`);
-// const job = schedule.scheduleJob(fechaFutura, async function () {
-//   try {
-//     // Realiza la llamada a la API
-//     // const response = await axios.get(apiUrl);
-//     console.log('Respuesta de la API');
-//   } catch (error) {
-//     console.error('Error al llamar a la API:', error.message);
-//   }
-// });
-
-// res.json({ mensaje: 'Llamada programada con éxito' });
-
-
