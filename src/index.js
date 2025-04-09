@@ -9,7 +9,7 @@ const AppError = require('./utils/appError');
 require('dotenv').config();
 
 // Configuraciones
-app.set('port', process.env.PORT || 3000);
+app.set('port', process.env.PORT || 4000);
 
 // Middleware
 app.use(morgan('dev'));
