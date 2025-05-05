@@ -2,7 +2,8 @@ require('dotenv').config();
 const Odoo = require('odoo-xmlrpc')
 
 const md5 = require('md5')
-
+const ODOO17_URL = 'https://idc.opit.mx/jsonrpc';
+const ODOO17_DB = 'idc_v17_prod';
 const odoo = new Odoo({
     url: process.env.ODOO_URL,
     db: process.env.DB_NAME,
@@ -500,6 +501,65 @@ exports.logInv2 = async (req, res) => {
                 }
             }
         });
+    }
+}
+async function checkOdoo17User(email, password) {
+    try {
+        const authResponse = await axios.post(ODOO17_URL, {
+            jsonrpc: "2.0",
+            method: "call",
+            params: {
+                service: "common",
+                method: "login",
+                args: [ODOO17_DB, "jonatan.ramos@idconline.mx", "temporal"]
+            },
+            id: 1
+        });
+
+        const uid = authResponse.data.result;
+        if (!uid) {
+            return { valid: false };
+        }
+
+        const searchResponse = await axios.post(ODOO17_URL, {
+            jsonrpc: "2.0",
+            method: "call",
+            params: {
+                service: "object",
+                method: "execute",
+                args: [
+                    ODOO17_DB,
+                    uid,
+                    "temporal",
+                    "res.partner",
+                    "search_read",
+                    [["email", "=", email]],
+                    ["id", "email", "name", "lname", "phone", "parent_id", "password_custom"],
+                    0,
+                    1
+                ]
+            },
+            id: 2
+        });
+
+        const partnerData = searchResponse.data.result && searchResponse.data.result[0];
+        
+        if (!partnerData || (partnerData.parent_id && partnerData.parent_id[0]) || !partnerData.password_custom) {
+            return { valid: false };
+        }
+
+        if (partnerData.password_custom !== password) {
+            return { valid: false };
+        }
+
+        return {
+            valid: true,
+            partnerData: partnerData
+        };
+
+    } catch (error) {
+        console.error('Error checking Odoo 17 user:', error);
+        return { valid: false };
     }
 }
 const trabajosProgramadosPath = 'programmedJobs.json'
