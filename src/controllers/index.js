@@ -1,5 +1,8 @@
 require('dotenv').config();
 const Odoo = require('odoo-xmlrpc')
+
+const md5 = require('md5')
+
 const odoo = new Odoo({
     url: process.env.ODOO_URL,
     db: process.env.DB_NAME,
@@ -14,7 +17,7 @@ const FormData = require('form-data')
 const path = require('path');
 const rootCas = require('ssl-root-cas').create();
 rootCas.addFile(path.resolve(__dirname, 'intermediate.pem'));
-const httpsAgent = new https.Agent({ca: rootCas});
+const httpsAgent = new https.Agent({ ca: rootCas });
 //Programar jobs para notificaciones
 const schedule = require('node-schedule');
 const fs = require('fs').promises
@@ -27,11 +30,11 @@ exports.getAllTodos = (req, res, next) => {
             return;
         }
         console.log('Connected to Odoo server');
-        
+
         var inParams = [];
         inParams.push([['email', '=', req.body.params.email]]);
         inParams.push(['email', 'phone', 'adress3', 'date', 'contact_address', 'is_company', 'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']);
-        
+
         var params = [];
         params.push(inParams);
 
@@ -41,7 +44,7 @@ exports.getAllTodos = (req, res, next) => {
                 return;
             }
             let value = value2.filter(val => val.parent_id === false);
-            
+
             if (value.length === 0) {
                 res.status(200).json({
                     status: "success",
@@ -83,11 +86,11 @@ exports.getAllSales = (req, res, next) => {
             } else {
                 inParams.push([['partner_id.id', '=', value2], ['state', '=', 'done']]);
             }
-            inParams.push(['name', 'confirmation_date', 'partner_id', 'user_id', 'amount_total', 'invoice_status', 
-                           'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line', 
-                           'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id', 
-                           'origin', 'state', 'invoice_state', 'invoice_count', 'invoice_ids']);
-            
+            inParams.push(['name', 'confirmation_date', 'partner_id', 'user_id', 'amount_total', 'invoice_status',
+                'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line',
+                'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id',
+                'origin', 'state', 'invoice_state', 'invoice_count', 'invoice_ids']);
+
             var finalArray = [];
             var params = [];
             params.push(inParams);
@@ -214,10 +217,10 @@ exports.getCons = (req, res, next) => {
             } else {
                 inParams.push([['partner_id.id', '=', value2]]);
             }
-            inParams.push(['name', 'confirmation_date', 'partner_id', 'user_id', 'amount_total', 'invoice_status', 
-                           'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line', 
-                           'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id', 
-                           'origin', 'product_id', 'email']);
+            inParams.push(['name', 'confirmation_date', 'partner_id', 'user_id', 'amount_total', 'invoice_status',
+                'subscription_management', 'partner_invoice_id', 'orderhdr_id', 'order_line',
+                'x_studio_field_DGArF', 'delivery_method_id', 'partner_shipping_id', 'cfdi_usage_id',
+                'origin', 'product_id', 'email']);
             params = [];
             params.push(inParams);
             odoo.execute_kw('sale.order', 'search_read', params, function (err2, value) {
@@ -365,51 +368,142 @@ exports.logIn = (req, res, next) => {
     logData.append('password', req.body.params.pass);
     logData.append('private_key', '{2A629162-9A1B-11E1-A5B0-5DF26188709B}');
     axios.post(process.env.URL_LOGIN, logData, { httpsAgent })
-    .then(function (response) {
+        .then(function (response) {
+            odoo.connect(function (err) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                console.log('Connected to Odoo server');
+                var inParams = [];
+                inParams.push([['email', '=', req.body.params.user]]);
+                inParams.push(['email', 'phone', 'adress3', 'date', 'contact_address', 'is_company', 'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']);
+                var params = [];
+                params.push(inParams);
+                odoo.execute_kw('res.partner', 'search_read', params, function (err2, value2) {
+                    if (err2) {
+                        console.log(err2);
+                        return;
+                    }
+                    let value = value2.filter(val => val.parent_id === false);
+                    if (value.length === 0) {
+                        res.status(200).json({
+                            status: "success",
+                            length: value?.length,
+                            data: {
+                                odooData: value[0],
+                                logInData: response.data
+                            },
+                            empty: true
+                        });
+                    } else {
+                        res.status(200).json({
+                            data: {
+                                odooData: value[0],
+                                logInData: response.data
+                            },
+                        });
+                    }
+                });
+            });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+};
+
+exports.logInv2 = async (req, res) => {
+    const { user: email, pass: password } = req.body.params;
+
+    try {
+        const odoo17User = await checkOdoo17User(email, password);
+
+        if (odoo17User.valid) {
+            return res.status(200).json({
+                data: {
+                    odooData: {
+                        test: "es 17",
+                        id: odoo17User.partnerData.id,
+                        email: odoo17User.partnerData.email
+                    },
+                    logInData: {
+                        status: "success",
+                        dataUser: {
+                            email: odoo17User.partnerData.email,
+                            nombre: odoo17User.partnerData.name || '',
+                            apellido_paterno: odoo17User.partnerData.lname || '',
+                            telefono: odoo17User.partnerData.phone || ''
+                        }
+                    }
+                }
+            });
+        }
+
+        const logData = new FormData();
+        logData.append('login', email);
+        logData.append('password', md5(password));
+        logData.append('private_key', '{2A629162-9A1B-11E1-A5B0-5DF26188709B}');
+
+        const response = await axios.post(process.env.URL_LOGIN, logData, { httpsAgent });
+
+        //  Odoo 11
         odoo.connect(function (err) {
             if (err) {
                 console.log(err);
-                return;
+                return res.status(401).json({
+                    data: {
+                        logInData: {
+                            status: "error",
+                            message: "Error connecting to Odoo"
+                        }
+                    }
+                });
             }
-            console.log('Connected to Odoo server');
-            var inParams = [];
-            inParams.push([['email', '=', req.body.params.user]]);
-            inParams.push(['email', 'phone', 'adress3', 'date', 'contact_address', 'is_company', 'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']);
-            var params = [];
-            params.push(inParams);
-            odoo.execute_kw('res.partner', 'search_read', params, function (err2, value2) {
+
+            const inParams = [
+                [['email', '=', email]],
+                ['email', 'phone', 'adress3', 'date', 'contact_address', 'is_company',
+                    'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']
+            ];
+
+            odoo.execute_kw('res.partner', 'search_read', [inParams], function (err2, value2) {
                 if (err2) {
                     console.log(err2);
-                    return;
+                    return res.status(401).json({
+                        data: {
+                            logInData: {
+                                status: "error",
+                                message: "Error fetching partner data"
+                            }
+                        }
+                    });
                 }
+
                 let value = value2.filter(val => val.parent_id === false);
-                if (value.length === 0) {
-                    res.status(200).json({
-                        status: "success",
-                        length: value?.length,
-                        data: {
-                            odooData: value[0],
-                            logInData: response.data
-                        },
-                        empty: true
-                    });
-                } else {
-                    res.status(200).json({
-                        data: {
-                            odooData: value[0],
-                            logInData: response.data
-                        },
-                    });
-                }
+                res.status(200).json({
+                    data: {
+                        test: "es 11",
+                        odooData: value[0] || {},
+                        logInData: response.data
+                    }
+                });
             });
         });
-    })
-    .catch(function (error) {
-        console.log(error);
-    });
-};
-   const trabajosProgramadosPath = 'programmedJobs.json'
-   exports.schedule = async (req,res) => {
+
+    } catch (error) {
+        console.log('Login error:', error);
+        res.status(401).json({
+            data: {
+                logInData: {
+                    status: "error",
+                    message: "Authentication failed"
+                }
+            }
+        });
+    }
+}
+const trabajosProgramadosPath = 'programmedJobs.json'
+exports.schedule = async (req, res) => {
     console.log(req.body)
     const { fecha, hora, bigUrl, title, body, dateSent } = req.body;
     console.log(fecha, hora, bigUrl, title, body, dateSent)
@@ -427,50 +521,50 @@ exports.logIn = (req, res, next) => {
     }
     trabajosProgramados.push({ fecha: fechaFutura });
     try {
-      await fs.writeFile(trabajosProgramadosPath, JSON.stringify(trabajosProgramados, null, 2), 'utf8');
+        await fs.writeFile(trabajosProgramadosPath, JSON.stringify(trabajosProgramados, null, 2), 'utf8');
     } catch (error) {
-      console.error('Error al escribir en el archivo de trabajos programados:', error.message);
+        console.error('Error al escribir en el archivo de trabajos programados:', error.message);
     }
     const job = schedule.scheduleJob(fechaFutura, async function () {
         try {
             // const response = await axios.get(apiUrl);
             axios
-            .post("https://app.nativenotify.com/api/notification", {
-              appId: 12290,
-              appToken: 'NUU1zD6mlYTqs9y6NYrH5T',
-              title: title, 
-              body: body, 
-              dateSent: fechaFutura, 
-              ...(bigUrl && {bigUrl: bigUrl}) 
-            })
-            .then((response) => {
-                console.log('Notificacion enviada correctamente!')
-            })
-            .catch((error) => {
-              console.error('Error al enviar el formulario:', error);
-            });
+                .post("https://app.nativenotify.com/api/notification", {
+                    appId: 12290,
+                    appToken: 'NUU1zD6mlYTqs9y6NYrH5T',
+                    title: title,
+                    body: body,
+                    dateSent: fechaFutura,
+                    ...(bigUrl && { bigUrl: bigUrl })
+                })
+                .then((response) => {
+                    console.log('Notificacion enviada correctamente!')
+                })
+                .catch((error) => {
+                    console.error('Error al enviar el formulario:', error);
+                });
             console.log('Respuesta de la API:');
         } catch (error) {
-        console.error('Error al llamar a la API:', error.message);
+            console.error('Error al llamar a la API:', error.message);
         } finally {
-            const indice = trabajosProgramados.findIndex(t => t.fecha === fechaFutura );
+            const indice = trabajosProgramados.findIndex(t => t.fecha === fechaFutura);
             if (indice !== -1) {
                 trabajosProgramados.splice(indice, 1);
                 await fs.writeFile(trabajosProgramadosPath, JSON.stringify(trabajosProgramados, null, 2), 'utf8');
             }
         }
     });
-    res.json({ mensaje: 'Llamada programada con éxito a: '});
+    res.json({ mensaje: 'Llamada programada con éxito a: ' });
 
-   }
-   
-   exports.getJobs = async (req,res) => {
-        let trabajosProgramados = [];
-        try {
+}
+
+exports.getJobs = async (req, res) => {
+    let trabajosProgramados = [];
+    try {
         const contenido = await fs.readFile(trabajosProgramadosPath, 'utf8');
         trabajosProgramados = JSON.parse(contenido);
-        } catch (error) {
+    } catch (error) {
         console.error('Error al leer el archivo de trabajos programados:', error.message);
-        }
-        res.json(trabajosProgramados);
-   }
+    }
+    res.json(trabajosProgramados);
+}

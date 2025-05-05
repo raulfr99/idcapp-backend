@@ -9,9 +9,10 @@ const controllers = require("../controllers");
  router.route("/getOrderLines").post(controllers.getOrderLines);
  router.route("/getInvoices").post(controllers.getInvoices);
  router.route("/getCons").post(controllers.getCons);
- router.route("/logIn").post(controllers.logIn);
-//  router.route("/logInPrueba").post(newAuthController.logIn);
+ router.route("/logIn").post(controllers.logInv2);
+ router.route("/logInPrueba").post(newAuthController.logIn);
  router.route("/cambioPass").post(newAuthController.cambioPass);
+ router.route("/createUser").post(newAuthController.createUser);
  router.route("/schedule").post(controllers.schedule);
  router.route('/getJobs').get(controllers.getJobs)
 module.exports = router;
