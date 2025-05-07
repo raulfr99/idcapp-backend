@@ -19,8 +19,6 @@ const odoo = new Odoo({
 });
 
 // Configuración Odoo 17
-const ODOO17_URL = 'https://idc.opit.mx/jsonrpc';
-const ODOO17_DB = 'idc_v17_prod';
 
 exports.logIn = async (req, res, next) => {
     const { user: email, pass: password } = req.body.params;
@@ -145,13 +143,13 @@ exports.cambioPass = async (req, res, next) => {
 
 async function checkOdoo17User(email, password) {
     try {
-        const authResponse = await axios.post(ODOO17_URL, {
+        const authResponse = await axios.post(process.env.ODOO17_URL, {
             jsonrpc: "2.0",
             method: "call",
             params: {
                 service: "common",
                 method: "login",
-                args: [ODOO17_DB, "jonatan.ramos@idconline.mx", "temporal"]
+                args: [process.env.ODOO17_DB, process.env.ODOO17_US, process.env.ODOO17_PW]
             },
             id: 1
         });
@@ -161,16 +159,16 @@ async function checkOdoo17User(email, password) {
             return { valid: false };
         }
 
-        const searchResponse = await axios.post(ODOO17_URL, {
+        const searchResponse = await axios.post(process.env.ODOO17_URL, {
             jsonrpc: "2.0",
             method: "call",
             params: {
                 service: "object",
                 method: "execute",
                 args: [
-                    ODOO17_DB,
+                  process.env.ODOO17_DB,
                     uid,
-                    "temporal",
+                    process.env.ODOO17_PW,
                     "res.partner",
                     "search_read",
                     [["email", "=", email]],
@@ -213,13 +211,13 @@ exports.createUser = async (req, res, next) => {
 
   try {
     // 1. Autenticación con Odoo
-    const authResponse = await axios.post('https://idc.opit.mx/jsonrpc', {
+    const authResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
       params: {
         service: "common",
         method: "login",
-        args: ["idc_v17_prod", "jonatan.ramos@idconline.mx", "temporal"]
+        args: [process.env.ODOO17_DB, process.env.ODOO17_US, process.env.ODOO17_PW]
       },
       id: 1
     });
@@ -230,16 +228,16 @@ exports.createUser = async (req, res, next) => {
     }
 
     // 2. Buscar TODOS los partners con ese email (no solo el primero)
-    const partnersResponse = await axios.post('https://idc.opit.mx/jsonrpc', {
+    const partnersResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
       params: {
         service: "object",
         method: "execute",
         args: [
-          "idc_v17_prod",
+          process.env.ODOO17_DB,
           uid,
-          "temporal",
+          process.env.ODOO17_PW,
           "res.partner",
           "search_read",
           [["email", "=", email]],
@@ -268,16 +266,16 @@ exports.createUser = async (req, res, next) => {
     }
 
     // 5. Verificar si ya existe un usuario para este partner
-    const userResponse = await axios.post('https://idc.opit.mx/jsonrpc', {
+    const userResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
       params: {
         service: "object",
         method: "execute",
         args: [
-          "idc_v17_prod",
+          process.env.ODOO17_DB,
           uid,
-          "temporal",
+          process.env.ODOO17_PW,
           "res.users",
           "search_read",
           [["partner_id", "=", mainPartner.id]],
@@ -298,16 +296,16 @@ exports.createUser = async (req, res, next) => {
       } else {
         // Caso especial: existe usuario pero vinculado a otro partner
         // Actualizamos el partner_id del usuario existente
-        const updateResponse = await axios.post('https://idc.opit.mx/jsonrpc', {
+        const updateResponse = await axios.post(process.env.ODOO17_URL, {
           jsonrpc: "2.0",
           method: "call",
           params: {
             service: "object",
             method: "execute",
             args: [
-              "idc_v17_prod",
+              process.env.ODOO17_DB,
               uid,
-              "temporal",
+              process.env.ODOO17_PW,
               "res.users",
               "write",
               [[existingUser.id], {
@@ -334,16 +332,16 @@ exports.createUser = async (req, res, next) => {
     }
 
     // 7. Crear nuevo usuario Portal (si no existe)
-    const createResponse = await axios.post('https://idc.opit.mx/jsonrpc', {
+    const createResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
       params: {
         service: "object",
         method: "execute",
         args: [
-          "idc_v17_prod",
+          process.env.ODOO17_DB,
           uid,
-          "temporal",
+          process.env.ODOO17_PW,
           "res.users",
           "create",
           [{

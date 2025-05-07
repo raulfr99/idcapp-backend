@@ -2,8 +2,6 @@ require('dotenv').config();
 const Odoo = require('odoo-xmlrpc')
 
 const md5 = require('md5')
-const ODOO17_URL = 'https://idc.opit.mx/jsonrpc';
-const ODOO17_DB = 'idc_v17_prod';
 const odoo = new Odoo({
     url: process.env.ODOO_URL,
     db: process.env.DB_NAME,
@@ -414,7 +412,7 @@ exports.logIn = (req, res, next) => {
 };
 
 exports.logInv2 = async (req, res) => {
-    const { user: email, pass: password } = req.body.params;
+    const { email: email, password: password } = req.body;
 
     try {
         const odoo17User = await checkOdoo17User(email, password);
@@ -436,6 +434,14 @@ exports.logInv2 = async (req, res) => {
                             telefono: odoo17User.partnerData.phone || ''
                         }
                     }
+                }
+            });
+        }
+        if (odoo17User.wrongPassword) {
+            return res.status(401).json({
+                data: {
+                    status: "error",
+                    message: "Contraseña incorrecta"
                 }
             });
         }
@@ -492,7 +498,6 @@ exports.logInv2 = async (req, res) => {
         });
 
     } catch (error) {
-        console.log('Login error:', error);
         res.status(401).json({
             data: {
                 logInData: {
@@ -505,13 +510,13 @@ exports.logInv2 = async (req, res) => {
 }
 async function checkOdoo17User(email, password) {
     try {
-        const authResponse = await axios.post(ODOO17_URL, {
+        const authResponse = await axios.post(process.env.ODOO17_URL, {
             jsonrpc: "2.0",
             method: "call",
             params: {
                 service: "common",
                 method: "login",
-                args: [ODOO17_DB, "jonatan.ramos@idconline.mx", "temporal"]
+                args: [process.env.ODOO17_DB, process.env.ODOO17_US, process.env.ODOO17_PW]
             },
             id: 1
         });
@@ -521,16 +526,16 @@ async function checkOdoo17User(email, password) {
             return { valid: false };
         }
 
-        const searchResponse = await axios.post(ODOO17_URL, {
+        const searchResponse = await axios.post(process.env.ODOO17_URL, {
             jsonrpc: "2.0",
             method: "call",
             params: {
                 service: "object",
                 method: "execute",
                 args: [
-                    ODOO17_DB,
+                    process.env.ODOO17_DB,
                     uid,
-                    "temporal",
+                    process.env.ODOO17_PW,
                     "res.partner",
                     "search_read",
                     [["email", "=", email]],
@@ -541,15 +546,20 @@ async function checkOdoo17User(email, password) {
             },
             id: 2
         });
-
         const partnerData = searchResponse.data.result && searchResponse.data.result[0];
+        if(!partnerData.password_custom){
+            return { valid: false };
+        }
         
-        if (!partnerData || (partnerData.parent_id && partnerData.parent_id[0]) || !partnerData.password_custom) {
+        if (!partnerData || (partnerData.parent_id && partnerData.parent_id[0])) {
             return { valid: false };
         }
 
-        if (partnerData.password_custom !== password) {
-            return { valid: false };
+        if (partnerData.password_custom && partnerData.password_custom !== password) {
+            return { 
+                valid: false,
+                wrongPassword: true 
+            };
         }
 
         return {
@@ -564,9 +574,7 @@ async function checkOdoo17User(email, password) {
 }
 const trabajosProgramadosPath = 'programmedJobs.json'
 exports.schedule = async (req, res) => {
-    console.log(req.body)
     const { fecha, hora, bigUrl, title, body, dateSent } = req.body;
-    console.log(fecha, hora, bigUrl, title, body, dateSent)
     const fechaActual = new Date();
     const fechaFutura = new Date(`${fecha}T${hora}`);
     if (fechaFutura <= fechaActual) {
