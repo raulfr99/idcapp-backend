@@ -14,9 +14,10 @@ app.set('port', process.env.PORT || 4000);
 // Middleware
 app.use(morgan('dev'));
 app.use(cors());
-app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
+app.use(express.static(path.join(__dirname, 'public')));
 // Rutas
 app.use(require('./routes/index'));
 
@@ -24,6 +25,7 @@ app.use(require('./routes/index'));
 app.all("*", (req, res, next) => {
     next(new AppError(`La URL ${req.originalUrl} no existe.`, 404));
 });
+
 
 app.use((err, req, res, next) => {
     if (err instanceof AppError && err.statusCode === 404) {
@@ -35,7 +37,9 @@ app.use((err, req, res, next) => {
         });
     }
 });
-
+// app.get('/tabla-inpc', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public/tabla-inpc.html'));
+// });
 app.listen(app.get('port'), () => {
     console.log(`Server listening on port ${app.get('port')}`);
 });
