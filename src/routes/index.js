@@ -13,6 +13,7 @@ const inpcController = require("../controllers/inpcController")
  router.route("/logInPrueba").post(newAuthController.logIn);
  router.route("/cambioPass").post(newAuthController.cambioPass);
  router.route("/createUser").post(newAuthController.createUser);
+ router.route('/badUsers').get(newAuthController.getProblematicPartners)
  router.route("/schedule").post(controllers.schedule);
  router.route('/getJobs').get(controllers.getJobs)
  router.route("/inpc").get(inpcController.getINPCData)
