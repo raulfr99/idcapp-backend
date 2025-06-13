@@ -412,7 +412,7 @@ exports.logIn = (req, res, next) => {
 };
 
 exports.logInv2 = async (req, res, next) => {
-  const { user: email, pass: password } = req.body.params;
+  const { user: email, pass: password } = req.body;
 
   try {
     // Modificación para buscar todos los partners con ese email
