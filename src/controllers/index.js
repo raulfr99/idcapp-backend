@@ -412,10 +412,18 @@ exports.logIn = (req, res, next) => {
 };
 
 exports.logInv2 = async (req, res, next) => {
-  const { user: email, pass: password } = req.body;
+  // Verificar estructura del request
+  if (!req.body || !req.body.email || !req.body.password) {
+    return res.status(400).json({
+      status: "error",
+      message: "Solicitud inválida. Se requieren email y contraseña"
+    });
+  }
+
+  const { email, password } = req.body;
 
   try {
-    // Modificación para buscar todos los partners con ese email
+    // Autenticación en Odoo
     const authResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
@@ -430,16 +438,13 @@ exports.logInv2 = async (req, res, next) => {
     const uid = authResponse.data.result;
     if (!uid) {
       return res.status(401).json({
-        data: {
-          logInData: {
-            status: "error",
-            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
-          }
-        }
+        status: "error",
+        code: "AUTH_FAILED",
+        message: "Error de autenticación con Odoo"
       });
     }
 
-    // Buscar TODOS los partners con ese email (eliminamos el límite de 1)
+    // Buscar partners
     const searchResponse = await axios.post(process.env.ODOO17_URL, {
       jsonrpc: "2.0",
       method: "call",
@@ -460,64 +465,65 @@ exports.logInv2 = async (req, res, next) => {
     });
 
     const partners = searchResponse.data.result || [];
-
-    // Filtrar partners válidos (sin parent_id y con password_custom)
     const validPartners = partners.filter(p => !p.parent_id && p.password_custom);
 
+    // Manejo de errores específicos
     if (validPartners.length === 0) {
-      return res.status(401).json({
-        data: {
-          logInData: {
-            status: "error",
-            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
-          }
-        }
+      if (partners.length > 0) {
+        return res.status(403).json({
+          status: "error",
+          code: "NO_PASSWORD_SET",
+          message: "El usuario no tiene contraseña configurada"
+        });
+      }
+      return res.status(404).json({
+        status: "error",
+        code: "USER_NOT_FOUND",
+        message: "Usuario no encontrado"
       });
     }
 
-    // Seleccionar el partner con password_custom (tomamos el primero si hay varios)
-    const partnerData = validPartners[0];
-
-    // Verificar contraseña (comparación directa como en tu código original)
-    if (partnerData.password_custom !== password) {
+    // Verificar contraseña
+    const partner = validPartners[0];
+    if (partner.password_custom !== password) {
       return res.status(401).json({
-        data: {
-          logInData: {
-            status: "error",
-            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
-          }
-        }
+        status: "error",
+        code: "INVALID_PASSWORD",
+        message: "Contraseña incorrecta"
       });
     }
 
-    // Respuesta exitosa (manteniendo tu estructura original)
+    // Respuesta exitosa
     return res.status(200).json({
+      status: "success",
       data: {
-        odooData: {
-          id: partnerData.id,
-          email: partnerData.email
+        user: {
+          id: partner.id,
+          email: partner.email,
+          name: partner.name || '',
+          lastName: partner.lname || '',
+          phone: partner.phone || ''
         },
-        logInData: {
-          status: "success",
-          dataUser: {
-            email: partnerData.email,
-            nombre: partnerData.name || '',
-            apellido_paterno: partnerData.lname || '',
-            telefono: partnerData.phone || ''
-          }
-        }
+        token: "generar-token-jwt-aqui" // Implementar JWT si es necesario
       }
     });
 
   } catch (error) {
-    console.log('Login error:', error);
-    res.status(500).json({
-      data: {
-        logInData: {
-          status: "error",
-          message: "Error en el servidor al autenticar"
-        }
-      }
+    console.error('Login error:', error);
+    
+    // Manejo de errores de conexión con Odoo
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        status: "error",
+        code: "ODOO_UNAVAILABLE",
+        message: "Servicio Odoo no disponible"
+      });
+    }
+
+    return res.status(500).json({
+      status: "error",
+      code: "INTERNAL_ERROR",
+      message: "Error interno del servidor"
     });
   }
 };
