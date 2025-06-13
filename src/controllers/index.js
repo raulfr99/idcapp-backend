@@ -411,103 +411,116 @@ exports.logIn = (req, res, next) => {
         });
 };
 
-exports.logInv2 = async (req, res) => {
-    const { email: email, password: password } = req.body;
+exports.logInv2 = async (req, res, next) => {
+  const { user: email, pass: password } = req.body.params;
 
-    try {
-        const odoo17User = await checkOdoo17User(email, password);
+  try {
+    // Modificación para buscar todos los partners con ese email
+    const authResponse = await axios.post(process.env.ODOO17_URL, {
+      jsonrpc: "2.0",
+      method: "call",
+      params: {
+        service: "common",
+        method: "login",
+        args: [process.env.ODOO17_DB, process.env.ODOO17_US, process.env.ODOO17_PW]
+      },
+      id: 1
+    });
 
-        if (odoo17User.valid) {
-            return res.status(200).json({
-                data: {
-                    odooData: {
-                        test: "es 17",
-                        id: odoo17User.partnerData.id,
-                        email: odoo17User.partnerData.email
-                    },
-                    logInData: {
-                        status: "success",
-                        dataUser: {
-                            email: odoo17User.partnerData.email,
-                            nombre: odoo17User.partnerData.name || '',
-                            apellido_paterno: odoo17User.partnerData.lname || '',
-                            telefono: odoo17User.partnerData.phone || ''
-                        }
-                    }
-                }
-            });
+    const uid = authResponse.data.result;
+    if (!uid) {
+      return res.status(401).json({
+        data: {
+          logInData: {
+            status: "error",
+            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
+          }
         }
-        if (odoo17User.wrongPassword) {
-            return res.status(401).json({
-                data: {
-                    status: "error",
-                    message: "Contraseña incorrecta"
-                }
-            });
-        }
-
-        const logData = new FormData();
-        logData.append('login', email);
-        logData.append('password', md5(password));
-        logData.append('private_key', '{2A629162-9A1B-11E1-A5B0-5DF26188709B}');
-
-        const response = await axios.post(process.env.URL_LOGIN, logData, { httpsAgent });
-
-        //  Odoo 11
-        odoo.connect(function (err) {
-            if (err) {
-                console.log(err);
-                return res.status(401).json({
-                    data: {
-                        logInData: {
-                            status: "error",
-                            message: "Error connecting to Odoo"
-                        }
-                    }
-                });
-            }
-
-            const inParams = [
-                [['email', '=', email]],
-                ['email', 'phone', 'adress3', 'date', 'contact_address', 'is_company',
-                    'name', 'lname', 'fname', 'display_name', 'city', 'parent_id']
-            ];
-
-            odoo.execute_kw('res.partner', 'search_read', [inParams], function (err2, value2) {
-                if (err2) {
-                    console.log(err2);
-                    return res.status(401).json({
-                        data: {
-                            logInData: {
-                                status: "error",
-                                message: "Error fetching partner data"
-                            }
-                        }
-                    });
-                }
-
-                let value = value2.filter(val => val.parent_id === false);
-                res.status(200).json({
-                    data: {
-                        test: "es 11",
-                        odooData: value[0] || {},
-                        logInData: response.data
-                    }
-                });
-            });
-        });
-
-    } catch (error) {
-        res.status(401).json({
-            data: {
-                logInData: {
-                    status: "error",
-                    message: "Authentication failed"
-                }
-            }
-        });
+      });
     }
-}
+
+    // Buscar TODOS los partners con ese email (eliminamos el límite de 1)
+    const searchResponse = await axios.post(process.env.ODOO17_URL, {
+      jsonrpc: "2.0",
+      method: "call",
+      params: {
+        service: "object",
+        method: "execute",
+        args: [
+          process.env.ODOO17_DB,
+          uid,
+          process.env.ODOO17_PW,
+          "res.partner",
+          "search_read",
+          [["email", "=", email]],
+          ["id", "email", "name", "lname", "phone", "parent_id", "password_custom"]
+        ]
+      },
+      id: 2
+    });
+
+    const partners = searchResponse.data.result || [];
+
+    // Filtrar partners válidos (sin parent_id y con password_custom)
+    const validPartners = partners.filter(p => !p.parent_id && p.password_custom);
+
+    if (validPartners.length === 0) {
+      return res.status(401).json({
+        data: {
+          logInData: {
+            status: "error",
+            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
+          }
+        }
+      });
+    }
+
+    // Seleccionar el partner con password_custom (tomamos el primero si hay varios)
+    const partnerData = validPartners[0];
+
+    // Verificar contraseña (comparación directa como en tu código original)
+    if (partnerData.password_custom !== password) {
+      return res.status(401).json({
+        data: {
+          logInData: {
+            status: "error",
+            message: "Credenciales inválidas o usuario no encontrado en Odoo 17"
+          }
+        }
+      });
+    }
+
+    // Respuesta exitosa (manteniendo tu estructura original)
+    return res.status(200).json({
+      data: {
+        odooData: {
+          id: partnerData.id,
+          email: partnerData.email
+        },
+        logInData: {
+          status: "success",
+          dataUser: {
+            email: partnerData.email,
+            nombre: partnerData.name || '',
+            apellido_paterno: partnerData.lname || '',
+            telefono: partnerData.phone || ''
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.log('Login error:', error);
+    res.status(500).json({
+      data: {
+        logInData: {
+          status: "error",
+          message: "Error en el servidor al autenticar"
+        }
+      }
+    });
+  }
+};
 async function checkOdoo17User(email, password) {
     try {
         const authResponse = await axios.post(process.env.ODOO17_URL, {
